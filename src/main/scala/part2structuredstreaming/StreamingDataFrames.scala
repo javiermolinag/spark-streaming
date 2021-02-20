@@ -1,11 +1,10 @@
 package part2structuredstreaming
 
-import common.stocksSchema
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.apache.spark.sql.functions.{col, length}
+import org.apache.spark.sql.functions._
+import common._
 import org.apache.spark.sql.streaming.Trigger
-
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration._
 
 object StreamingDataFrames {
 
