@@ -1,6 +1,7 @@
 package part2structuredstreaming
 
-import org.apache.spark.sql.functions.{col, sum}
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.functions.{col, lit, split, sum}
 import org.apache.spark.sql.types.{LongType, StringType, StructField, StructType}
 import org.apache.spark.sql.{Column, DataFrame, Row, SparkSession}
 
@@ -91,17 +92,25 @@ object StreamingAggregations {
       .option("port", 12345)
       .load()
 
-    case class pokemon(number:String,name:String,type_1:String,type_2:String,total:Long,hp:Long,attack:Long,defense:Long,sp_atk:Long,sp_def:Long,speed:Long,generation:Int,legendary:String)
-
-    val pokemonRdd = lines.rdd
-      .map(line => line.toString().split(","))
-      .map(item => Row(pokemon(item(0),item(1),item(2),item(3),item(4).toLong,item(5).toLong,item(6).toLong,item(7).toLong,item(8).toLong,item(9).toLong,item(10).toLong,item(11).toInt,item(12))))
-
-    val pokemonDF = spark.createDataFrame(pokemonRdd,pokemonSchema)
+    val pokemonDF= lines
+      .withColumn("Number",split(col("value"),",").getItem(0))
+      .withColumn("Name",split(col("value"),",").getItem(1))
+      .withColumn("Type_1",split(col("value"),",").getItem(2))
+      .withColumn("Type_2",split(col("value"),",").getItem(3))
+      .withColumn("Total",split(col("value"),",").getItem(4))
+      .withColumn("HP",split(col("value"),",").getItem(5))
+      .withColumn("Attack",split(col("value"),",").getItem(6))
+      .withColumn("Defense",split(col("value"),",").getItem(7))
+      .withColumn("Sp_Atk",split(col("value"),",").getItem(8))
+      .withColumn("Sp_Def",split(col("value"),",").getItem(9))
+      .withColumn("Speed",split(col("value"),",").getItem(10))
+      .withColumn("Generation",split(col("value"),",").getItem(11))
+      .withColumn("Legendary",split(col("value"),",").getItem(12))
+      .filter(col("Name") =!= lit("Name"))
 
     pokemonDF.writeStream
       .format("console")
-      .outputMode("complete")
+      .outputMode("append")
       .start()
       .awaitTermination()
   }

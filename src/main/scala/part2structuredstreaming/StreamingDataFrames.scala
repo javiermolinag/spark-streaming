@@ -22,7 +22,9 @@ object StreamingDataFrames {
       .load()
 
     // transformation
-    val shortLines: DataFrame = lines.filter(length(col("value")) <= 5)
+    val shortLines: DataFrame = lines
+      .select(split(col("value"),",").getItem(1).alias("Name"))
+      .filter(length(col("Name")) > 5)
 
     // tell between a static vs a streaming DF
     println(shortLines.isStreaming)
@@ -64,15 +66,17 @@ object StreamingDataFrames {
       .format("console")
       .outputMode("append")
       .trigger(
-        // Trigger.ProcessingTime(2.seconds) // every 2 seconds run the query
+        Trigger.ProcessingTime(2.seconds) // every 2 seconds run the query
         // Trigger.Once() // single batch, then terminate
-        Trigger.Continuous(2.seconds) // experimental, every 2 seconds create a batch with whatever you have
+        // Trigger.Continuous(2.seconds) // experimental, every 2 seconds create a batch with whatever you have
       )
       .start()
       .awaitTermination()
   }
 
   def main(args: Array[String]): Unit = {
+    //readFromSocket()
+    //readFromFiles()
     demoTriggers()
   }
 }
