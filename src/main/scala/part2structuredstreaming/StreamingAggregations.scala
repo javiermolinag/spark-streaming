@@ -1,8 +1,8 @@
 package part2structuredstreaming
 
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.functions.{col, lit, split, sum}
-import org.apache.spark.sql.types.{LongType, StringType, StructField, StructType}
+import org.apache.spark.sql.functions.{avg, col, lit, split, sum}
+import org.apache.spark.sql.types.{DoubleType, LongType, StringType, StructField, StructType}
 import org.apache.spark.sql.{Column, DataFrame, Row, SparkSession}
 
 object StreamingAggregations {
@@ -92,25 +92,32 @@ object StreamingAggregations {
       .option("port", 12345)
       .load()
 
-    val pokemonDF= lines
+    val pokemonDF: DataFrame = lines
       .withColumn("Number",split(col("value"),",").getItem(0))
       .withColumn("Name",split(col("value"),",").getItem(1))
       .withColumn("Type_1",split(col("value"),",").getItem(2))
       .withColumn("Type_2",split(col("value"),",").getItem(3))
       .withColumn("Total",split(col("value"),",").getItem(4))
-      .withColumn("HP",split(col("value"),",").getItem(5))
-      .withColumn("Attack",split(col("value"),",").getItem(6))
-      .withColumn("Defense",split(col("value"),",").getItem(7))
-      .withColumn("Sp_Atk",split(col("value"),",").getItem(8))
-      .withColumn("Sp_Def",split(col("value"),",").getItem(9))
-      .withColumn("Speed",split(col("value"),",").getItem(10))
+      .withColumn("HP",split(col("value"),",").getItem(5).cast(DoubleType))
+      .withColumn("Attack",split(col("value"),",").getItem(6).cast(DoubleType))
+      .withColumn("Defense",split(col("value"),",").getItem(7).cast(DoubleType))
+      .withColumn("Sp_Atk",split(col("value"),",").getItem(8).cast(DoubleType))
+      .withColumn("Sp_Def",split(col("value"),",").getItem(9).cast(DoubleType))
+      .withColumn("Speed",split(col("value"),",").getItem(10).cast(DoubleType))
       .withColumn("Generation",split(col("value"),",").getItem(11))
       .withColumn("Legendary",split(col("value"),",").getItem(12))
       .filter(col("Name") =!= lit("Name"))
 
-    pokemonDF.writeStream
+    val resultAggDF: DataFrame = pokemonDF
+      .groupBy(col("Type_1"))
+      .agg(
+        avg(col("Attack")).alias("avg_attack"),
+        avg(col("Defense")).alias("avg_defense"))
+      .sort(col("avg_attack"),col("avg_defense"))
+
+    resultAggDF.writeStream
       .format("console")
-      .outputMode("append")
+      .outputMode("complete")
       .start()
       .awaitTermination()
   }
