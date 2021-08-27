@@ -7,8 +7,10 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import common._
+import org.apache.spark.rdd.RDD
 
 import java.util.Locale
+import scala.collection.mutable
 
 object DStreams {
 
@@ -41,7 +43,7 @@ object DStreams {
     val wordsStream: DStream[String] = socketStream.flatMap(line => line.split(" "))
 
     // action
-//    wordsStream.print()
+    // wordsStream.print()
     wordsStream.saveAsTextFiles("src/main/resources/data/words/") // each folder = RDD = batch, each file = a partition of the RDD
 
     ssc.start()
@@ -104,7 +106,34 @@ object DStreams {
     ssc.awaitTermination()
   }
 
+  val rdd1: RDD[String] = spark.sparkContext.parallelize(Seq(System.currentTimeMillis().toString + "," + "a,a,a,a,a,a,a,a,a,a,a,a,a"))
+  val auxStream: DStream[String] = ssc.queueStream[String](mutable.Queue(rdd1))
+  auxStream.saveAsTextFiles("src/main/resources/data/pokemonAux/")
+
+  def readFromSocketLast50() = {
+    val socketStream: DStream[String] = ssc.socketTextStream("localhost", 12345)
+    val bufferStream: DStream[String] = ssc.textFileStream("src/main/resources/data/pokemonAux/")
+    // transformation = lazy
+    val unionStream: DStream[String] = socketStream
+      .map(line => System.currentTimeMillis().toString + "," + line)
+      .union(bufferStream)
+    val resultStream: DStream[(String,Long)] = unionStream
+      .map(line => line.split(","))
+      .map(line => line(3))
+      .filter(item => item.length > 2 && item !=  "Type 1")
+      .countByValue()
+    unionStream.saveAsTextFiles("src/main/resources/data/pokemonAux/")
+
+    // action
+    resultStream.print()
+
+    ssc.start()
+    ssc.awaitTermination()
+  }
+
   def main(args: Array[String]): Unit = {
-    readFromFile()
+    readFromSocketLast50()
+    // readFromSocket()
+    // readFromFile()
   }
 }
