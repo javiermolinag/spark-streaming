@@ -106,23 +106,40 @@ object DStreams {
     ssc.awaitTermination()
   }
 
-  val rdd1: RDD[String] = spark.sparkContext.parallelize(Seq(System.currentTimeMillis().toString + "," + "a,a,a,a,a,a,a,a,a,a,a,a,a"))
+  val rdd1: RDD[String] = spark.sparkContext.parallelize(Seq((System.currentTimeMillis()/1000).toString + "," + "a,a,a,a,a,a,a,a,a,a,a,a,a"))
   val auxStream: DStream[String] = ssc.queueStream[String](mutable.Queue(rdd1))
   auxStream.saveAsTextFiles("src/main/resources/data/pokemonAux/")
 
-  def readFromSocketLast50() = {
+  def readFromSocketLast50() = {  // Conserva los n registros mas ecientes
     val socketStream: DStream[String] = ssc.socketTextStream("localhost", 12345)
     val bufferStream: DStream[String] = ssc.textFileStream("src/main/resources/data/pokemonAux/")
     // transformation = lazy
     val unionStream: DStream[String] = socketStream
-      .map(line => System.currentTimeMillis().toString + "," + line)
+      .map(line => (System.currentTimeMillis()/1000).toString + "," + line)
       .union(bufferStream)
-    val resultStream: DStream[(String,Long)] = unionStream
-      .map(line => line.split(","))
+    val resultStream = unionStream
+      .map(line => line.split(",").toSeq)
       .map(line => line(3))
       .filter(item => item.length > 2 && item !=  "Type 1")
-      .countByValue()
-    unionStream.saveAsTextFiles("src/main/resources/data/pokemonAux/")
+      .countByValue() // aumenta un tipo debido a la lectura de los temporales
+
+    unionStream
+      .map(line => (line.split(","),line))
+      .map(line => (line._1(0),line._2))
+      .transform(rdd => {
+        val list = rdd
+          .map(item => item._1)
+          .coalesce(1)
+          .sortBy(item => item,false)
+          .take(5)
+          .toSeq
+        list.foreach(println)
+        rdd.filter {
+          case(dateString: String, lineString: String) => list.contains(dateString)
+        }
+      })
+      .map(line => line._2)
+      .saveAsTextFiles("src/main/resources/data/pokemonAux/")
 
     // action
     resultStream.print()
