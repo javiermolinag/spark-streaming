@@ -141,7 +141,7 @@ object DStreams {
       .map(line => line._2)
       .saveAsTextFiles("src/main/resources/data/pokemonAux/")
 
-    // action aa
+    // action aaaaa
     resultStream.print()
     ssc.start()
     ssc.awaitTermination()
