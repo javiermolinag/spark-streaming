@@ -145,6 +145,7 @@ object DStreams {
     resultStream.print()
     ssc.start()
     ssc.awaitTermination()
+
   }
 
   def main(args: Array[String]): Unit = {
