@@ -143,7 +143,6 @@ object DStreams {
 
     // action
     resultStream.print()
-
     ssc.start()
     ssc.awaitTermination()
   }
